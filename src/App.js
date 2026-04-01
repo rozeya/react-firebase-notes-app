@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { db } from "./firebase"; // [cite: 66, 275]
 import {
   collection,
@@ -18,16 +18,15 @@ function App() {
   const [editId, setEditId] = useState(null);
   const notesCollection = collection(db, "notes"); // [cite: 78]
 
-  // Fetch Notes - Ordered by newest first
-  const fetchNotes = async () => {
-    const q = query(notesCollection, orderBy("createdAt", "desc"));
-    const data = await getDocs(q); // [cite: 70, 91]
-    setNotes(data.docs.map((doc) => ({ ...doc.data(), id: doc.id }))); // [cite: 94-97]
-  };
+  const fetchNotes = useCallback(async () => {
+  const q = query(notesCollection, orderBy("createdAt", "desc"));
+  const data = await getDocs(q);
+  setNotes(data.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+}, [notesCollection]);
 
-  useEffect(() => {
-    fetchNotes(); // [cite: 104, 105]
-  }, []);
+useEffect(() => {
+  fetchNotes();
+}, [fetchNotes]);
 
   // Handle Save (Create or Update)
   const handleSave = async () => {
