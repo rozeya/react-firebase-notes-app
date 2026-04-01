@@ -16,6 +16,7 @@ function App() {
   const [note, setNote] = useState("");
   const [notes, setNotes] = useState([]);
   const [editId, setEditId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const notesCollection = collection(db, "notes");
 
   // Fetch Notes - Ordered by newest first
@@ -34,12 +35,10 @@ function App() {
     if (note.trim() === "") return;
 
     if (editId) {
-      // Update existing note
       const noteDoc = doc(db, "notes", editId);
       await updateDoc(noteDoc, { text: note });
       setEditId(null);
     } else {
-      // Create new note
       await addDoc(notesCollection, {
         text: note,
         createdAt: new Date()
@@ -63,66 +62,129 @@ function App() {
     setEditId(n.id);
   };
 
+  // Cancel edit
+  const cancelEdit = () => {
+    setNote("");
+    setEditId(null);
+  };
+
   // Handle Enter key to save
   const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
       handleSave();
     }
   };
 
+  // Filter notes based on search
+  const filteredNotes = notes.filter((n) =>
+    n.text.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="app-wrapper">
-      <div className="glass-container">
-        <header className="app-header">
-          <h1 className="main-title">My Notes</h1>
-          <p className="subtitle">Save your thoughts</p>
-        </header>
+      <header className="app-header">
+        <div className="header-content">
+          <h1 className="app-title">📝 My Notes</h1>
+          <p className="app-tagline">Keep your thoughts organized</p>
+        </div>
+      </header>
 
-        <div className="input-group">
-          <input
-            type="text"
-            placeholder="Type a note..."
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="note-input"
-            maxLength="500"
-          />
-          <button className="magic-button" onClick={handleSave}>
-            {editId ? "Update ✨" : "Add ✨"}
-          </button>
+      <main className="app-main">
+        <div className="input-container">
+          <div className="input-wrapper">
+            <textarea
+              className="note-input"
+              placeholder="Write something beautiful..."
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              onKeyPress={handleKeyPress}
+              maxLength="500"
+              rows="3"
+            />
+            <div className="char-count">
+              {note.length}/500
+            </div>
+          </div>
+
+          <div className="button-group">
+            <button className="btn btn-save" onClick={handleSave}>
+              {editId ? "✏️ Update Note" : "➕ Add Note"}
+            </button>
+            {editId && (
+              <button className="btn btn-cancel" onClick={cancelEdit}>
+                ✕ Cancel
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="notes-grid">
-          {notes.length === 0 ? (
-            <p className="empty-message">No notes yet. Add one to get started! 📝</p>
+        {notes.length > 0 && (
+          <div className="search-container">
+            <input
+              type="text"
+              className="search-input"
+              placeholder="🔍 Search notes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <span className="note-count">{filteredNotes.length} notes</span>
+          </div>
+        )}
+
+        <div className="notes-container">
+          {filteredNotes.length === 0 ? (
+            <div className="empty-state">
+              <p className="empty-icon">📭</p>
+              <p className="empty-text">
+                {notes.length === 0
+                  ? "No notes yet. Create your first one!"
+                  : "No notes match your search."}
+              </p>
+            </div>
           ) : (
-            notes.map((n) => (
-              <div className="sticky-note" key={n.id}>
-                <div className="note-content">
-                  <p>{n.text}</p>
+            <div className="notes-grid">
+              {filteredNotes.map((n, index) => (
+                <div
+                  className={`note-card note-color-${(index % 3) + 1}`}
+                  key={n.id}
+                >
+                  <div className="note-header">
+                    <span className="note-badge">
+                      {new Date(n.createdAt?.toDate?.()).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <div className="note-body">
+                    <p className="note-text">{n.text}</p>
+                  </div>
+
+                  <div className="note-actions">
+                    <button
+                      className="action-btn edit-btn"
+                      onClick={() => startEdit(n)}
+                      title="Edit note"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="action-btn delete-btn"
+                      onClick={() => deleteNote(n.id)}
+                      title="Delete note"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
-                <div className="note-footer">
-                  <button 
-                    className="edit-btn"
-                    onClick={() => startEdit(n)}
-                    aria-label="Edit note"
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button 
-                    className="del-btn"
-                    onClick={() => deleteNote(n.id)}
-                    aria-label="Delete note"
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
-      </div>
+      </main>
+
+      <footer className="app-footer">
+        <p>✨ Notes App | Created with React & Firebase</p>
+      </footer>
     </div>
   );
 }
